@@ -1,4 +1,5 @@
 import inspect
+import json
 import logging
 import os
 import random
@@ -6,12 +7,6 @@ import subprocess
 import sys
 import time
 from datetime import datetime
-
-IS_HEADLESS = False
-PROFILE_LIMIT = 300
-API_URL = "https://dolphin-anty-api.com"
-BASE_URL = os.getenv("DOLPHIN_BASE_URL")
-API_KEY = os.getenv("DOLPHIN_API_KEY")
 
 
 # Color configurations for terminal output
@@ -27,6 +22,7 @@ class Config:
 # Configure required libraries
 def install_requirements():
     try:
+        import dotenv as _
         import inquirer as _
         import requests as _
         import selenium as _
@@ -35,7 +31,16 @@ def install_requirements():
             f"{Config.YELLOW}Required libraries not found. Installing...{Config.RESET}"
         )
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "inquirer", "requests", "selenium"]
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "inquirer",
+                "python-dotenv",
+                "requests",
+                "selenium",
+            ]
         )
         print(
             f"{Config.GREEN}Required libraries installed successfully.{Config.RESET}\n"
@@ -45,8 +50,23 @@ def install_requirements():
 install_requirements()
 
 import requests
+from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+
+load_dotenv()
+
+IS_HEADLESS = False
+PROFILE_LIMIT = 300
+API_URL = "https://dolphin-anty-api.com"
+BASE_URL = os.getenv("DOLPHIN_BASE_URL")
+API_KEY = os.getenv("DOLPHIN_API_KEY")
 
 
 class ColoredFormatter(logging.Formatter):
@@ -183,30 +203,282 @@ def close_profile(profile_id):
         return None
 
 
-def perform_automation(profile_id):
+def perform_automation(profile_id, reviews_to_report):
     """
-    Main automation function - customize this for your specific needs
+    Main automation function for reporting reviews with human-like behavior
+    and login handling
     """
-    try:
-        log_message(f"Starting profile {profile_id}", "INFO")
-        response = run_profile(profile_id, IS_HEADLESS)
 
+    try:
+        response = run_profile(profile_id, IS_HEADLESS)
         if not response:
             log_message(f"Failed to start profile {profile_id}", "ERROR")
             return
-
         port = response["automation"]["port"]
 
-        # Connect to the opened browser via Selenium with debugAddress port
+        log_message(f"Connecting to profile {profile_id} at port {port}", "INFO")
         options = Options()
         options.add_experimental_option("debuggerAddress", f"127.0.0.1:{port}")
         driver = webdriver.Chrome(options=options)
 
-        # automation logic go here - for now just fetch the google title
-        log_message("Starting automation sequence", "INFO")
-        driver.get("https://google.com/")
-        log_message(f"Page title: {driver.title}", "INFO")
-        time.sleep(random.uniform(1, 2))
+        # Won't work in headless mode
+        def human_like_mouse_movement():
+            actions = ActionChains(driver)
+
+            # Get viewport size
+            viewport_width = driver.execute_script("return window.innerWidth;")
+            viewport_height = driver.execute_script("return window.innerHeight;")
+
+            def generate_bezier_curve(start_point, end_point, num_points=10):
+                # Create a random control point for the curve
+                control_x = random.randint(
+                    min(start_point[0], end_point[0]), max(start_point[0], end_point[0])
+                )
+                control_y = random.randint(
+                    min(start_point[1], end_point[1]), max(start_point[1], end_point[1])
+                )
+
+                points = []
+                for t in range(num_points + 1):
+                    t = t / num_points
+                    # Quadratic Bezier curve formula
+                    x = (
+                        (1 - t) ** 2 * start_point[0]
+                        + 2 * (1 - t) * t * control_x
+                        + t**2 * end_point[0]
+                    )
+                    y = (
+                        (1 - t) ** 2 * start_point[1]
+                        + 2 * (1 - t) * t * control_y
+                        + t**2 * end_point[1]
+                    )
+                    points.append((int(x), int(y)))
+                return points
+
+            # Perform several random curved movements
+            current_x = current_y = 0
+            for _ in range(3):  # Number of major movements
+                # Generate random end point
+                end_x = random.randint(-viewport_width // 3, viewport_width // 3)
+                end_y = random.randint(-viewport_height // 3, viewport_height // 3)
+
+                # Generate curve points
+                curve_points = generate_bezier_curve(
+                    (current_x, current_y),
+                    (end_x, end_y),
+                    num_points=random.randint(
+                        8, 15
+                    ),  # Random number of points for varying speed
+                )
+
+                # Follow the curve with slight imperfections
+                for point in curve_points:
+                    # Add slight random deviation to simulate hand shakiness
+                    deviation_x = random.gauss(
+                        0, 2
+                    )  # Random deviation with normal distribution
+                    deviation_y = random.gauss(0, 2)
+
+                    try:
+                        actions.move_by_offset(
+                            point[0] - current_x + deviation_x,
+                            point[1] - current_y + deviation_y,
+                        ).perform()
+                    except:
+                        # Reset if we move out of bounds
+                        actions = ActionChains(driver)
+                        current_x = current_y = 0
+                        continue
+
+                    current_x, current_y = point
+
+                    # Random micro pause
+                    time.sleep(random.uniform(0.01, 0.03))
+
+                # Occasional pause between major movements
+                time.sleep(random.uniform(0.1, 0.3))
+
+                # Sometimes add a "hesitation" movement
+                if random.random() < 0.3:  # 30% chance
+                    small_x = random.randint(-20, 20)
+                    small_y = random.randint(-20, 20)
+                    actions.move_by_offset(small_x, small_y).perform()
+                    time.sleep(random.uniform(0.1, 0.2))
+                    actions.move_by_offset(-small_x, -small_y).perform()
+
+        def ensure_browser_focused():
+            try:
+                _ = driver.get_window_rect()  # window_rect
+
+                actions = ActionChains(driver)
+                actions.move_to_element(driver.find_element(By.TAG_NAME, "body"))
+                actions.perform()
+
+                driver.execute_script("window.focus();")
+
+                driver.maximize_window()
+
+                return True
+            except Exception as e:
+                log_message(f"Error focusing browser: {str(e)}", "ERROR")
+                return False
+
+        def simulate_human_behavior():
+            """Simulate human-like mouse movements and scrolling"""
+            try:
+                # Random scroll with variable speed
+                scroll_amount = random.randint(100, 300)
+                for _ in range(scroll_amount // 20):  # Smooth scrolling
+                    driver.execute_script(
+                        f"window.scrollBy(0, {20 + random.randint(-5, 5)});"
+                    )
+                    time.sleep(random.uniform(0.01, 0.03))
+                time.sleep(random.uniform(0.5, 1))
+
+                if not ensure_browser_focused():
+                    log_message("Failed to focus browser window", "ERROR")
+                    return
+
+                # Human-like mouse movements
+                human_like_mouse_movement()
+
+            except Exception as e:
+                log_message(f"Error in human behavior simulation: {str(e)}", "ERROR")
+
+        def handle_login():
+            """Handle the login process when redirected to login page"""
+            try:
+                # Click first signed out account
+                account_selector = "#yDmH0d > div.gfM9Zd > div.tTmh9.NQ5OL > div.SQNfcc.WbALBb > div > div > div.Anixxd > div > div > div > form > span > section > div > div > div > div > ul > li.aZvCDf.oqdnae.W7Aapd.zpCp3.SmR8 > div"
+                account = WebDriverWait(driver, 10).until(
+                    EC.element_to_be_clickable((By.CSS_SELECTOR, account_selector))
+                )
+                simulate_human_behavior()
+                account.click()
+
+                # Handle password input
+                try:
+                    password_field = WebDriverWait(driver, 5).until(
+                        EC.presence_of_element_located(
+                            (
+                                By.CSS_SELECTOR,
+                                "#password > div.aCsJod.oJeWuf > div > div.Xb9hP > input",
+                            )
+                        )
+                    )
+                    # Let autofill handle the password
+                    time.sleep(2)
+
+                    manual_login_wait_count = 0
+                    if password_field.get_attribute("data-initial-value") != "":
+                        log_message(
+                            "Couldn't find any saved password, waiting for manual login. Make sure to submit the password after entering",
+                            "INFO",
+                        )
+                        while True:
+                            time.sleep(5)
+                            manual_login_wait_count += 5
+
+                            if password_field.get_attribute("data-initial-value") == "":
+                                raise TimeoutException  # To make sure that password isn't submitted in the middle of the process
+                            if manual_login_wait_count > 120:
+                                log_message(
+                                    "Maximum wait time for manual login Exceeded",
+                                    "ERROR",
+                                )
+                                return False
+
+                    password_field.send_keys(Keys.ENTER)
+                except TimeoutException:
+                    pass
+
+                # Handle "Not now" button
+                try:
+                    not_now_button = WebDriverWait(driver, 20).until(
+                        EC.element_to_be_clickable(
+                            (
+                                By.CSS_SELECTOR,
+                                "#yDmH0d > div.gfM9Zd > div.tTmh9.NQ5OL > div.SQNfcc.WbALBb > div > div > div.fby5Ed > div > div.SxkrO > div > div > button > span",
+                            )
+                        )
+                    )
+                    not_now_button.click()
+                    time.sleep(2)
+                except TimeoutException:
+                    pass
+
+                return True
+            except Exception as e:
+                log_message(f"Error in login process: {str(e)}", "ERROR")
+                return False
+
+        for review_url in reviews_to_report:
+            try:
+                log_message(f"Processing review URL: {review_url[:100]}.....", "INFO")
+                driver.get(review_url)
+                time.sleep(random.uniform(1, 2))
+
+                # Check if redirected to login page
+                if (
+                    driver.current_url.startswith("https://accounts.google.com/")
+                    or driver.current_url == review_url
+                ):
+                    log_message("Login required. Handling login process...", "INFO")
+                    if not handle_login():
+                        log_message("Login failed, skipping this review", "ERROR")
+                        continue
+
+                    # Reload the review URL after login
+                    driver.get(review_url)
+                    time.sleep(2)
+
+                    # Check if redirected to login again
+                    if driver.current_url.startswith("https://accounts.google.com/v3"):
+                        log_message(
+                            "Redirected to login again, closing session", "ERROR"
+                        )
+                        break
+
+                simulate_human_behavior()
+
+                try:
+                    spam_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (
+                                By.CSS_SELECTOR,
+                                "#yDmH0d > c-wiz > div > ul > li:nth-child(2) > a",
+                            )
+                        )
+                    )
+                    spam_button.click()
+                except Exception as e:
+                    log_message(f"Error clicking spam button: {str(e)}", "ERROR")
+                    continue
+
+                try:
+                    submit_button = WebDriverWait(driver, 10).until(
+                        EC.element_to_be_clickable(
+                            (
+                                By.CSS_SELECTOR,
+                                "#yDmH0d > c-wiz.zQTmif.SSPGKf.eejsDc.BE677d > div > div.mhBSmf > div > div > button > span",
+                            )
+                        )
+                    )
+                    submit_button.click()
+                    time.sleep(1.5)
+                    log_message(
+                        f"Successfully reported review for {review_url[:100]}.....",
+                        "INFO",
+                    )
+                except Exception as e:
+                    log_message(f"Error clicking submit button: {str(e)}", "ERROR")
+                    continue
+
+                # Wait random time between reviews
+                time.sleep(random.uniform(2, 4))
+            except Exception as e:
+                log_message(f"Error processing review URL: {str(e)}", "ERROR")
+                continue
 
         # Clean up
         driver.quit()
@@ -214,7 +486,6 @@ def perform_automation(profile_id):
         log_message(
             f"Successfully completed automation for profile {profile_id}", "INFO"
         )
-
     except Exception as e:
         log_message(f"Automation error for profile {profile_id}: {str(e)}", "ERROR")
         try:
@@ -225,18 +496,28 @@ def perform_automation(profile_id):
 
 
 def main():
-
     if not all([API_KEY, BASE_URL]):
         log_message("Missing required environment variables", "CRITICAL")
         sys.exit(1)
 
     try:
+        reviews_to_report = []
         input_file = choose_file()
         if input_file is None:
             sys.exit(1)
 
+        with open(input_file, "r") as f:
+            reviews_to_report = json.load(f)
+
+        if len(reviews_to_report) <= 0:
+            log_message(
+                f"Review file `{input_file}` doesn't contain any reviews to report"
+            )
+            sys.exit(1)
+
         log_message(
-            f"Starting browser automation script for review file: {input_file}", "INFO"
+            f"Starting review reporter for review file: `{input_file}`, total reviews to report: {len(reviews_to_report)}",
+            "INFO",
         )
 
         # Fetch & Process all profiles
@@ -248,7 +529,7 @@ def main():
             profile_id = profile["id"]
             profile_name = profile["name"]
             log_message(f"Processing profile '{profile_name}' - {profile_id}", "INFO")
-            perform_automation(profile_id)
+            perform_automation(profile_id, reviews_to_report)
             time.sleep(random.uniform(1, 3))
 
     except KeyboardInterrupt:
