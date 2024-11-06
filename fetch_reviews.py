@@ -92,7 +92,7 @@ def setup_logger(log_file=None):
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
     )
     file_handler.setFormatter(file_formatter)
 
@@ -100,7 +100,7 @@ def setup_logger(log_file=None):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_formatter = ColoredFormatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
     )
     console_handler.setFormatter(console_formatter)
 
@@ -110,9 +110,8 @@ def setup_logger(log_file=None):
 
 
 def log_message(message, level="INFO"):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     logger = setup_logger()
-    getattr(logger, level.lower())(f"[{timestamp}] {message}")
+    getattr(logger, level.lower())(message)
 
 
 def ensure_data_directory():

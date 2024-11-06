@@ -105,7 +105,7 @@ def setup_logger(log_file=None):
     file_handler = logging.FileHandler(log_file)
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
     )
     file_handler.setFormatter(file_formatter)
 
@@ -113,7 +113,7 @@ def setup_logger(log_file=None):
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
     console_formatter = ColoredFormatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "[%(asctime)s] - %(name)s - %(levelname)s - %(message)s"
     )
     console_handler.setFormatter(console_formatter)
 
@@ -158,9 +158,8 @@ def choose_file():
 
 
 def log_message(message, level="INFO"):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
     logger = setup_logger()
-    getattr(logger, level.lower())(f"[{timestamp}] {message}")
+    getattr(logger, level.lower())(message)
 
 
 def get_browser_profiles():
@@ -348,6 +347,34 @@ def perform_automation(profile_id, reviews_to_report):
         def handle_login():
             """Handle the login process when redirected to login page"""
             try:
+                # TODO: Handle recaptcha if possible.. wait for manual solve for now
+                account_selector = "#yDmH0d > div.gfM9Zd > div.tTmh9.NQ5OL > div.SQNfcc.WbALBb > div > div > div.Anixxd > div > div > div > form > span > section > div > div > div > div > ul > li.aZvCDf.oqdnae.W7Aapd.zpCp3.SmR8 > div"
+                loop_count = 0
+
+                while loop_count <= 30:  # Wait for 5 Min ( 5 min * 60 / 10 = 30 )
+                    try:
+                        account = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (By.CSS_SELECTOR, account_selector)
+                            )
+                        )
+                        break
+                    except:
+                        if loop_count == 0:
+                            log_message(
+                                "reCAPTCHA required... waiting until recaptcha got solved...",
+                                "WARNING",
+                            )
+                        loop_count += 1
+
+                if loop_count >= 30:
+                    log_message(
+                        "Maximum wait time for reCAPTCHA exceeded",
+                        "ERROR",
+                    )
+
+                    return False
+
                 # Click first signed out account
                 account_selector = "#yDmH0d > div.gfM9Zd > div.tTmh9.NQ5OL > div.SQNfcc.WbALBb > div > div > div.Anixxd > div > div > div > form > span > section > div > div > div > div > ul > li.aZvCDf.oqdnae.W7Aapd.zpCp3.SmR8 > div"
                 account = WebDriverWait(driver, 10).until(
@@ -372,7 +399,7 @@ def perform_automation(profile_id, reviews_to_report):
                     manual_login_wait_count = 0
                     if password_field.get_attribute("data-initial-value") != "":
                         log_message(
-                            "Couldn't find any saved password, waiting for manual login. Make sure to submit the password after entering",
+                            "Couldn't find any saved password, waiting for manual Password entry. Make sure to submit the password after entering",
                             "INFO",
                         )
                         while True:
@@ -380,8 +407,8 @@ def perform_automation(profile_id, reviews_to_report):
                             manual_login_wait_count += 5
 
                             if password_field.get_attribute("data-initial-value") == "":
-                                raise TimeoutException  # To make sure that password isn't submitted in the middle of the process
-                            if manual_login_wait_count > 120:
+                                raise TimeoutException  # To make sure that password isn't submitted in the middle of entering the password
+                            if manual_login_wait_count > 240:
                                 log_message(
                                     "Maximum wait time for manual login Exceeded",
                                     "ERROR",
@@ -421,7 +448,7 @@ def perform_automation(profile_id, reviews_to_report):
                 # Check if redirected to login page
                 if (
                     driver.current_url.startswith("https://accounts.google.com/")
-                    or driver.current_url == review_url
+                    or driver.current_url != review_url
                 ):
                     log_message("Login required. Handling login process...", "INFO")
                     if not handle_login():
