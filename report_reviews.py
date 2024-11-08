@@ -674,7 +674,6 @@ def main():
         reviews_to_report = []
         last_processed_profile_idx = 0
         last_processed_profile, input_file = load_last_processed_data()
-        cleaned_input_file = input_file
 
         if last_processed_profile and input_file:
             cleaned_input_file = input_file.split('/')[-1] if "/" in input_file else input_file.split('\\')[-1]
@@ -708,8 +707,9 @@ def main():
             )
             sys.exit(1)
 
+        cleaned_input_file = input_file.split('/')[-1] if "/" in input_file else input_file.split('\\')[-1]
         log_message(
-            f"Starting review reporter for review file: `{cleaned_input_file if cleaned_input_file else input_file}`, total reviews to report: {len(reviews_to_report)}",
+            f"Starting review reporter for review file: `{cleaned_input_file}`, total reviews to report: {len(reviews_to_report)}",
             "INFO",
         )
 
