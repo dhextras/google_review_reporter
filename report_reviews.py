@@ -633,7 +633,7 @@ def perform_automation(profile_id, reviews_to_report):
                 # If that also failed simply move on to the next review
                 if review_report_failed:
                     log_message(
-                        f"Failed to to report review: {review_url[:100]}.....",
+                        f"Failed to report review: {review_url[:100]}.....",
                         "ERROR",
                     )
                 else:
@@ -709,7 +709,7 @@ def main():
             sys.exit(1)
 
         log_message(
-            f"Starting review reporter for review file: `{cleaned_input_file}`, total reviews to report: {len(reviews_to_report)}",
+            f"Starting review reporter for review file: `{cleaned_input_file if cleaned_input_file else input_file}`, total reviews to report: {len(reviews_to_report)}",
             "INFO",
         )
 
