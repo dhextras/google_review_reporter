@@ -2,6 +2,7 @@
 log/
 data/
 cred/selected_profiles.json
+cred/processed_data.json
 *.log
 
 **/__pycache__/

@@ -67,6 +67,11 @@ PROFILE_LIMIT = 100
 API_URL = "https://dolphin-anty-api.com"
 BASE_URL = os.getenv("DOLPHIN_BASE_URL")
 API_KEY = os.getenv("DOLPHIN_API_KEY")
+SELECTED_PROFILES_FILE = "cred/selected_profiles.json"
+PROCESSED_DATA_FILE = "cred/processed_data.json"
+
+# Create the cred Dir
+os.makedirs("cred", exist_ok=True)
 
 
 class ColoredFormatter(logging.Formatter):
@@ -162,6 +167,25 @@ def log_message(message, level="INFO"):
     getattr(logger, level.lower())(message)
 
 
+def load_last_processed_data():
+    try:
+        with open(PROCESSED_DATA_FILE, "r") as f:
+            data = json.load(f)
+        profile_id = data["profile_id"]
+        input_file = data["input_file"]
+        return profile_id, input_file
+    except:
+        return None, None
+
+
+def save_last_processed_data(profile_id, input_file):
+    try:
+        with open(PROCESSED_DATA_FILE, "w") as f:
+            json.dump({"profile_id": profile_id, "input_file": input_file}, f)
+    except:
+        pass
+
+
 def get_browser_profiles():
     """Fetch all available browser profiles"""
     all_profiles = []
@@ -197,7 +221,7 @@ def get_browser_profiles():
 
 def get_selected_profiles(all_profiles):
     try:
-        with open("cred/selected_profiles.json", "r") as f:
+        with open(SELECTED_PROFILES_FILE, "r") as f:
             choosen_profiles = json.load(f)
 
         if choosen_profiles == []:
@@ -218,6 +242,7 @@ def run_profile(profile_id, headless=False):
         url = f"{BASE_URL}/v1.0/browser_profiles/{profile_id}/start?automation=1{is_headless_str}"
         response = requests.get(url)
         response.raise_for_status()
+
         return response.json()
     except Exception as e:
         log_message(f"Error starting profile {profile_id}: {str(e)}", "ERROR")
@@ -230,6 +255,7 @@ def close_profile(profile_id):
         url = f"{BASE_URL}/v1.0/browser_profiles/{profile_id}/stop"
         response = requests.get(url)
         response.raise_for_status()
+
         return response.json()
     except Exception as e:
         log_message(f"Error closing profile {profile_id}: {str(e)}", "ERROR")
@@ -563,7 +589,9 @@ def perform_automation(profile_id, reviews_to_report):
                         )
                         offtopic_button.click()
                     except Exception as e:
-                        log_message(f"Error clicking spam button: {str(e)}", "ERROR")
+                        log_message(
+                            f"Error clicking offtopic button: {str(e)}", "ERROR"
+                        )
                         continue
 
                     try:
@@ -624,6 +652,7 @@ def perform_automation(profile_id, reviews_to_report):
         log_message(
             f"Successfully completed automation for profile {profile_id}", "INFO"
         )
+
     except Exception as e:
         log_message(f"Automation error for profile {profile_id}: {str(e)}", "ERROR")
         try:
@@ -639,8 +668,29 @@ def main():
         sys.exit(1)
 
     try:
+        resume = False
         reviews_to_report = []
-        input_file = choose_file()
+        last_processed_profile_idx = 0
+        last_processed_profile, input_file = load_last_processed_data()
+
+        if last_processed_profile and input_file:
+            print(
+                f"{Config.YELLOW}Found unfinished review reports. Profile Id: `{last_processed_profile}`, Review File: `{input_file.split('/')[-1]}`. ( Press y to resume anything else to skip... ):{Config.RESET}",
+                end=" ",
+            )
+            resume_inp = input()
+
+            if resume_inp.lower().strip() == "y":
+                log_message("Resuming review reporter....", "INFO")
+                resume = True
+            else:
+                log_message("Starting the review process from scratch...", "INFO")
+                input_file = None
+                save_last_processed_data(None, None)
+
+        if not input_file:
+            input_file = choose_file()
+
         if input_file is None:
             sys.exit(1)
 
@@ -654,7 +704,7 @@ def main():
             sys.exit(1)
 
         log_message(
-            f"Starting review reporter for review file: `{input_file}`, total reviews to report: {len(reviews_to_report)}",
+            f"Starting review reporter for review file: `{input_file.split('/')[-1]}`, total reviews to report: {len(reviews_to_report)}",
             "INFO",
         )
 
@@ -662,14 +712,41 @@ def main():
         all_profiles = get_browser_profiles()
         profiles = get_selected_profiles(all_profiles)
 
-        log_message(f"Found {len(profiles)} profiles", "INFO")
+        if resume:
+            last_processed_profile_idx = next(
+                (
+                    idx
+                    for idx, profile in enumerate(profiles)
+                    if profile.get("id", None) == last_processed_profile
+                ),
+                0,
+            )
 
-        for profile in profiles:
-            profile_id = profile["id"]
-            profile_name = profile["name"]
-            log_message(f"Processing profile '{profile_name}' - {profile_id}", "INFO")
-            perform_automation(profile_id, reviews_to_report)
-            time.sleep(random.uniform(1, 3))
+        log_message(
+            f"Found {len(profiles[last_processed_profile_idx:])} profiles to process",
+            "INFO",
+        )
+
+        for profile in profiles[last_processed_profile_idx:]:
+            try:
+                profile_id = profile["id"]
+                profile_name = profile["name"]
+                log_message(
+                    f"Processing profile '{profile_name}' - {profile_id} ( CTRL + C to exit )",
+                    "INFO",
+                )
+                perform_automation(profile_id, reviews_to_report)
+                time.sleep(random.uniform(1, 3))
+                save_last_processed_data(profile_id, input_file)
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except Exception as e:
+                log_message(f"Processing one of the profile: {str(e)}", "ERROR")
+                # Try to save the profil_id
+                try:
+                    save_last_processed_data(profile["id"], input_file)
+                except:
+                    pass
 
     except KeyboardInterrupt:
         log_message("Shutting down gracefully...", "INFO")
