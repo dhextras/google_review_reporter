@@ -670,10 +670,13 @@ def main():
         reviews_to_report = []
         last_processed_profile_idx = 0
         last_processed_profile, input_file = load_last_processed_data()
+        cleaned_input_file = input_file
 
         if last_processed_profile and input_file:
+            cleaned_input_file = input_file.split('/')[-1] if "/" in input_file else input_file.split('\\')[-1]
+
             print(
-                f"{Config.YELLOW}Found unfinished review reports. Profile Id: `{last_processed_profile}`, Review File: `{input_file.split('/')[-1]}`. ( Press y to resume anything else to skip... ):{Config.RESET}",
+                f"{Config.YELLOW}Found unfinished review reports. Profile Id: `{last_processed_profile}`, Review File: `{cleaned_input_file}`. ( Press y to resume anything else to skip... ):{Config.RESET}",
                 end=" ",
             )
             resume_inp = input()
@@ -702,7 +705,7 @@ def main():
             sys.exit(1)
 
         log_message(
-            f"Starting review reporter for review file: `{input_file.split('/')[-1]}`, total reviews to report: {len(reviews_to_report)}",
+            f"Starting review reporter for review file: `{cleaned_input_file}`, total reviews to report: {len(reviews_to_report)}",
             "INFO",
         )
 
