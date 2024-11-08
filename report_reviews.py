@@ -557,12 +557,11 @@ def perform_automation(profile_id, reviews_to_report):
                     submit_button.click()
 
                     try:
-                        # TODO: use the actual selector
                         _ = WebDriverWait(driver, 3).until(
                             EC.element_to_be_clickable(
                                 (
                                     By.CSS_SELECTOR,
-                                    "selector..",
+                                    "#yDmH0d > c-wiz.zQTmif.SSPGKf.eejsDc.FDd2Le > div > div.mhBSmf > div > div > button > span",
                                 )
                             )
                         )
@@ -608,12 +607,11 @@ def perform_automation(profile_id, reviews_to_report):
                         submit_button.click()
 
                         try:
-                            # TODO: use the actual selector
                             _ = WebDriverWait(driver, 3).until(
                                 EC.element_to_be_clickable(
                                     (
                                         By.CSS_SELECTOR,
-                                        "selector..",
+                                        "#yDmH0d > c-wiz.zQTmif.SSPGKf.eejsDc.FDd2Le > div > div.mhBSmf > div > div > button > span",
                                     )
                                 )
                             )
