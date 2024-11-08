@@ -63,7 +63,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 load_dotenv()
 
 IS_HEADLESS = False
-PROFILE_LIMIT = 300
+PROFILE_LIMIT = 100
 API_URL = "https://dolphin-anty-api.com"
 BASE_URL = os.getenv("DOLPHIN_BASE_URL")
 API_KEY = os.getenv("DOLPHIN_API_KEY")
@@ -164,17 +164,51 @@ def log_message(message, level="INFO"):
 
 def get_browser_profiles():
     """Fetch all available browser profiles"""
-    url = f"{API_URL}/browser_profiles"
-    headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
-    params = {"limit": PROFILE_LIMIT}
+    all_profiles = []
 
+    def get_profile_page(url=None):
+        try:
+            url = url if url else f"{API_URL}/browser_profiles"
+            headers = {
+                "Authorization": f"Bearer {API_KEY}",
+                "Content-Type": "application/json",
+            }
+            params = {"limit": PROFILE_LIMIT}
+
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()["data"], response.json()["next_page_url"]
+        except Exception as e:
+            log_message(
+                f"Error fetching browser profiles for url: {url}: {str(e)}", "ERROR"
+            )
+            return [], None
+
+    next_url = None
+    while True:
+        profiles, next_url = get_profile_page(next_url)
+        all_profiles = all_profiles + profiles
+
+        if not next_url:
+            break
+
+    return all_profiles
+
+
+def get_selected_profiles(all_profiles):
     try:
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        return response.json()["data"]
-    except Exception as e:
-        log_message(f"Error fetching browser profiles: {str(e)}", "ERROR")
-        return []
+        with open("cred/selected_profiles.json", "r") as f:
+            choosen_profiles = json.load(f)
+
+        if choosen_profiles == []:
+            return all_profiles
+
+        selected_profiles = [
+            profile for profile in all_profiles if profile["name"] in choosen_profiles
+        ]
+        return selected_profiles
+    except:
+        return all_profiles
 
 
 def run_profile(profile_id, headless=False):
@@ -547,8 +581,9 @@ def main():
             "INFO",
         )
 
-        # Fetch & Process all profiles
-        profiles = get_browser_profiles()
+        # Fetch & Process all profiles / the selected profiles
+        all_profiles = get_browser_profiles()
+        profiles = get_selected_profiles(all_profiles)
 
         log_message(f"Found {len(profiles)} profiles", "INFO")
 

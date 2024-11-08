@@ -1,6 +1,7 @@
 .env
 log/
 data/
+cred/selected_profiles.json
 *.log
 
 **/__pycache__/
