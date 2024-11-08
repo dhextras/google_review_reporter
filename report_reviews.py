@@ -478,6 +478,7 @@ def perform_automation(profile_id, reviews_to_report):
                 log_message(f"Processing review URL: {review_url[:100]}.....", "INFO")
                 driver.get(review_url)
                 time.sleep(random.uniform(1, 2))
+                review_report_failed = False
 
                 # Check if redirected to login page
                 if (
@@ -525,15 +526,91 @@ def perform_automation(profile_id, reviews_to_report):
                             )
                         )
                     )
+
+                    time.sleep(0.5)
                     submit_button.click()
-                    time.sleep(1.5)
+
+                    try:
+                        # TODO: use the actual selector
+                        _ = WebDriverWait(driver, 3).until(
+                            EC.element_to_be_clickable(
+                                (
+                                    By.CSS_SELECTOR,
+                                    "selector..",
+                                )
+                            )
+                        )
+                        review_report_failed = True
+                    except:
+                        pass
+
+                except Exception as e:
+                    log_message(f"Error clicking submit button: {str(e)}", "ERROR")
+                    continue
+
+                # If failed try to report it as offtopic
+                if review_report_failed:
+                    simulate_human_behavior()
+
+                    try:
+                        offtopic_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (
+                                    By.CSS_SELECTOR,
+                                    "#yDmH0d > c-wiz > div > ul > li:nth-child(1) > a",
+                                )
+                            )
+                        )
+                        offtopic_button.click()
+                    except Exception as e:
+                        log_message(f"Error clicking spam button: {str(e)}", "ERROR")
+                        continue
+
+                    try:
+                        submit_button = WebDriverWait(driver, 10).until(
+                            EC.element_to_be_clickable(
+                                (
+                                    By.CSS_SELECTOR,
+                                    "#yDmH0d > c-wiz.zQTmif.SSPGKf.eejsDc.BE677d > div > div.mhBSmf > div > div > button > span",
+                                )
+                            )
+                        )
+
+                        time.sleep(0.5)
+                        submit_button.click()
+
+                        try:
+                            # TODO: use the actual selector
+                            _ = WebDriverWait(driver, 3).until(
+                                EC.element_to_be_clickable(
+                                    (
+                                        By.CSS_SELECTOR,
+                                        "selector..",
+                                    )
+                                )
+                            )
+                            review_report_failed = True
+                        except:
+                            pass
+
+                    except Exception as e:
+                        log_message(
+                            f"Error clicking submit button while trying again: {str(e)}",
+                            "ERROR",
+                        )
+                        continue
+
+                # If that also failed simply move on to the next review
+                if review_report_failed:
+                    log_message(
+                        f"Failed to to report review: {review_url[:100]}.....",
+                        "ERROR",
+                    )
+                else:
                     log_message(
                         f"Successfully reported review for {review_url[:100]}.....",
                         "INFO",
                     )
-                except Exception as e:
-                    log_message(f"Error clicking submit button: {str(e)}", "ERROR")
-                    continue
 
                 # Wait random time between reviews
                 time.sleep(random.uniform(2, 4))
