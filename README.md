@@ -29,8 +29,16 @@ sudo apt install python3 python3-pip
 
 **Note:** Fill in the values for each variable as needed.
 
+## Step 2: Create a `cred/selected_profiles.json` file
 
-## Step 2: Install Google Chrome and ChromeDriver
+> Create this file or copy the example file. if you wanna select the profiles you want the automation to use
+
+- Example: 
+   ```json
+   ["Profile xxx", "Profile yyy", "Profile zzz", "Profile www"]
+   ```
+   
+## Step 3: Install Google Chrome and ChromeDriver
 
 
 1. **Install Google Chrome:**
@@ -62,7 +70,7 @@ sudo apt install python3 python3-pip
    chromedriver --version
    ```
 
-## Step 3: Run the Scripts
+## Step 4: Run the Scripts
 
 Fetch all the reports of who ever user you wanna report then report them one by one
 
