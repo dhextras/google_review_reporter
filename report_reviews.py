@@ -575,6 +575,10 @@ def perform_automation(profile_id, reviews_to_report):
 
                 # If failed try to report it as offtopic
                 if review_report_failed:
+                    log_message(f"Review report failed trying different reason for the report...", "ERROR")
+                    driver.get(review_url)
+                    time.sleep(1)
+
                     simulate_human_behavior()
 
                     try:
