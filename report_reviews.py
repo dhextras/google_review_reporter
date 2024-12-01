@@ -258,6 +258,14 @@ def close_profile(profile_id):
         log_message(f"Error closing profile {profile_id}: {str(e)}", "ERROR")
         return None
 
+def close_all_browsers():
+    """Stop all the browser profiles, used to cleanup cause some browsers still remains open"""
+    profiles = get_browser_profiles()
+
+    for profile in profiles:
+        profile_id = profile.get("id", None)
+        if profile_id:
+            close_profile(profile_id)
 
 def perform_automation(profile_id, reviews_to_report):
     """
@@ -762,10 +770,13 @@ def main():
                     pass
 
     except KeyboardInterrupt:
-        log_message("Shutting down gracefully...", "INFO")
+        log_message("Shutting down gracefully after closing all profiles, wait....", "INFO")
+        close_all_browsers()
     except Exception as e:
         log_message(f"Critical error in main: {e}", "CRITICAL")
         sys.exit(1)
+    finally:
+        close_all_browsers()
 
 
 if __name__ == "__main__":
