@@ -299,7 +299,6 @@ def main():
                 if len(failed_phones) > 0:
                     log_failed_devices(failed_phones, selected_phones)
 
-                print(started_phones)
             elif action == "Stop All Phones":
                 stoped_phones_len, failed_phones = stop_phones(phone_ids)
                 log_message(
