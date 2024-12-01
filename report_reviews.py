@@ -27,9 +27,6 @@ def install_requirements():
         import requests as _
         import selenium as _
     except ImportError:
-        print(
-            f"{Config.YELLOW}Required libraries not found. Installing...{Config.RESET}"
-        )
         subprocess.check_call(
             [
                 sys.executable,
@@ -68,7 +65,7 @@ API_URL = "https://dolphin-anty-api.com"
 BASE_URL = os.getenv("DOLPHIN_BASE_URL")
 API_KEY = os.getenv("DOLPHIN_API_KEY")
 SELECTED_PROFILES_FILE = "cred/selected_profiles.json"
-PROCESSED_DATA_FILE = "cred/processed_data.json"
+PROCESSED_DATA_FILE = "cred/processed_browser_data.json"
 
 # Create the cred Dir
 os.makedirs("cred", exist_ok=True)
@@ -575,7 +572,10 @@ def perform_automation(profile_id, reviews_to_report):
 
                 # If failed try to report it as offtopic
                 if review_report_failed:
-                    log_message(f"Review report failed trying different reason for the report...", "ERROR")
+                    log_message(
+                        f"Review report failed trying different reason for the report...",
+                        "ERROR",
+                    )
                     driver.get(review_url)
                     time.sleep(1)
 
@@ -676,7 +676,11 @@ def main():
         last_processed_profile, input_file = load_last_processed_data()
 
         if last_processed_profile and input_file:
-            cleaned_input_file = input_file.split('/')[-1] if "/" in input_file else input_file.split('\\')[-1]
+            cleaned_input_file = (
+                input_file.split("/")[-1]
+                if "/" in input_file
+                else input_file.split("\\")[-1]
+            )
 
             print(
                 f"{Config.YELLOW}Found unfinished review reports. Profile Id: `{last_processed_profile}`, Review File: `{cleaned_input_file}`. ( Press y to resume anything else to skip... ):{Config.RESET}",
@@ -707,7 +711,11 @@ def main():
             )
             sys.exit(1)
 
-        cleaned_input_file = input_file.split('/')[-1] if "/" in input_file else input_file.split('\\')[-1]
+        cleaned_input_file = (
+            input_file.split("/")[-1]
+            if "/" in input_file
+            else input_file.split("\\")[-1]
+        )
         log_message(
             f"Starting review reporter for review file: `{cleaned_input_file}`, total reviews to report: {len(reviews_to_report)}",
             "INFO",
