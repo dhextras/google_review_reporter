@@ -98,16 +98,15 @@ Fetch all the reports of who ever user you wanna report then report them one by 
   python report_profile.py
   ```
 
-> This isn't fully finished so you have to run the RPA task manually until there is a new api for custom rpa tasks
+> This isn't fully finished so you have to run the RPA task manually until they finis new api for custom rpa tasks
 
       - Open Geelark Application. Go to Discover > Automation > RPA tasks
       - In Google profile report click on the `>` play like button
-      - Click Edit flow > Task setting
-      - Enter the profileUrl to report in the Debug Value
-      - Click save & Press Debug button
+      - Create Task > Add phone
       - Select All the phones you wanted to run this for and click ok
-      - Click on Debug log button right beside the debug button see the infos
-      - Make sure to press cancel & do not save after you finished
+      - For each phones pubDate choose now
+      - For each phones profileUrl Enter the profile link you wanted to report
+      - Click on Execution History to see the execution details
 
 Make sure your `.env` file if properly set up before running these scripts.
 
