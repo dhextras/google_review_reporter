@@ -2,7 +2,8 @@
 log/
 data/
 cred/selected_profiles.json
-cred/processed_data.json
+cred/selected_phones.json
+cred/processed_browser_data.json
 *.log
 
 **/__pycache__/

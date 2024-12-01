@@ -16,7 +16,6 @@ sudo apt update
 sudo apt install python3 python3-pip
 ```
 
-
 ## Step 1: Create a `.env` File
 
 1. **Create a file named `.env` or copy the `.env.example` in the root directory.**
@@ -25,11 +24,17 @@ sudo apt install python3 python3-pip
    ```plaintext
    DOLPHIN_BASE_URL= # Mostly http://localhost:3001 but change it if you customize
    DOLPHIN_API_KEY= # Dolphin Api key grab it in https://dolphin-anty.com/panel/#/api
+
+   GEELARK_APP_ID= # You can find this Geelark Application > Discover > Api > Connection
+   GEELARK_APP_KEY= # Discover > Api > API key ( need to generate )
    ```
 
 **Note:** Fill in the values for each variable as needed.
 
-## Step 2: Create a `cred/selected_profiles.json` file
+## Step 2: Create a `cred/selected_XXXXX.json` file
+
+`cred/selected_profiles.json` - for browser automation
+`cred/selected_phones.json` - for mobile automation
 
 > Create this file or copy the example file. if you wanna select the profiles you want the automation to use
 
@@ -87,6 +92,23 @@ Fetch all the reports of who ever user you wanna report then report them one by 
   python report_reviews.py
   ```
 
+- To run the **Profile reporter** with mobile, use:
+
+  ```bash
+  python report_profile.py
+  ```
+
+> This isn't fully finished so you have to run the RPA task manually until there is a new api for custom rpa tasks
+
+      - Open Geelark Application. Go to Discover > Automation > RPA tasks
+      - In Google profile report click on the `>` play like button
+      - Click Edit flow > Task setting
+      - Enter the profileUrl to report in the Debug Value
+      - Click save & Press Debug button
+      - Select All the phones you wanted to run this for and click ok
+      - Click on Debug log button right beside the debug button see the infos
+      - Make sure to press cancel & do not save after you finished
+
 Make sure your `.env` file if properly set up before running these scripts.
 
 ## File Structure Overview
@@ -100,5 +122,6 @@ google_review_reporter/
 ├── .gitignore               # Git ignore file
 ├── README.md                # Project documentation
 ├── fetch_reviews.py         # Fetch specific users Reviews
+├── report_profile.py        # Report the user profile from all the mobiles in geelark
 └── report_reviews.py        # Report all reviews on all dolphin browser profiles
 ```
