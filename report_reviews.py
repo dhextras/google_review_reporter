@@ -260,7 +260,8 @@ def close_profile(profile_id):
 
 def close_all_browsers():
     """Stop all the browser profiles, used to cleanup cause some browsers still remains open"""
-    profiles = get_browser_profiles()
+    all_profiles = get_browser_profiles()
+    profiles = get_selected_profiles(all_profiles)
 
     for profile in profiles:
         profile_id = profile.get("id", None)
