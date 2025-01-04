@@ -36,7 +36,7 @@ sudo apt install python3 python3-pip
 `cred/selected_profiles.json` - for browser automation
 `cred/selected_phones.json` - for mobile automation
 
-> Create this file or copy the example file. if you wanna select the profiles you want the automation to use
+> Create this file or copy the example file. if you wanna select the profiles you want the automation to use - Skip this if you wanna use all of em
 
 - Example: 
    ```json
@@ -100,12 +100,14 @@ Fetch all the reports of who ever user you wanna report then report them one by 
 
 > This isn't fully finished so you have to run the RPA task manually until they finis new api for custom rpa tasks
 
-      - Open Geelark Application. Go to Discover > Automation > RPA tasks
+      - Open Geelark Application. Go to Discover > Automation > custom tasks
       - In Google profile report click on the `>` play like button
-      - Create Task > Add phone
+      - Create Common Task > Add phone
       - Select All the phones you wanted to run this for and click ok
       - For each phones pubDate choose now
-      - For each phones profileUrl Enter the profile link you wanted to report
+      - For each phones 
+         - If reporting entire profile - profileUrl Enter the profile link you wanted to report ( must be a short link other wise wont work in some situations )
+         - If reporting each reviews seperately - Enter the list of urls you got from running 'fetch_reviews.py' script
       - Click on Execution History to see the execution details
 
 Make sure your `.env` file if properly set up before running these scripts.
