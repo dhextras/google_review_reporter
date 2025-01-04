@@ -1,3 +1,4 @@
+import gzip
 import inspect
 import json
 import logging
@@ -21,9 +22,10 @@ class Config:
 
 def install_requirements():
     try:
-        import brotli
-        import selenium
-        import seleniumwire
+        import brotli as _
+        import inquirer as _
+        import selenium as _
+        import seleniumwire as _
     except ImportError:
         print(
             f"{Config.YELLOW}Required libraries not found. Installing...{Config.RESET}"
@@ -36,7 +38,9 @@ def install_requirements():
                 "install",
                 "selenium",
                 "selenium-wire",
+                "blinker==1.7.0",
                 "brotli",
+                "inquirer",
             ]
         )
         print(
@@ -114,6 +118,34 @@ def log_message(message, level="INFO"):
     getattr(logger, level.lower())(message)
 
 
+def choose_actions():
+    """
+    Displays a graphical interface to for user to choose the script options
+    """
+
+    import inquirer
+
+    actions = [
+        "Genearte Direct Report links - Dolphin",
+        "Genearte Short links - Geelark",
+    ]
+
+    questions = [
+        inquirer.List(
+            "action",
+            message="Select what you wanna fetch ( Use arrow keys to choose )",
+            choices=actions,
+        ),
+    ]
+
+    answers = inquirer.prompt(questions)
+
+    if not answers:
+        return None
+    selected_action = answers["action"]
+    return selected_action
+
+
 def ensure_data_directory():
     """Create data directory if it doesn't exist"""
     if not os.path.exists(DATA_DIR):
@@ -130,7 +162,16 @@ def decode_url(url):
     return url
 
 
-def extract_urls_from_response(response_text):
+def extract_short_urls_from_response(response_text):
+    """Extract Google review URLs from response text using regex"""
+    urls = set()
+    pattern = re.compile(r'https://maps\.app\.goo\.gl/[^"\'}\s]*')
+    matches = pattern.findall(response_text)
+    urls.update(matches)
+    return [decode_url(url) for url in urls]
+
+
+def extract_report_urls_from_response(response_text):
     """Extract Google review URLs from response text using regex"""
     urls = set()
     pattern = re.compile(
@@ -141,15 +182,8 @@ def extract_urls_from_response(response_text):
     return [decode_url(url) for url in urls]
 
 
-def intercept_review_requests(user_id):
-    """Process and extract review URLs for a given user ID"""
-    url = f"https://www.google.com/maps/contrib/{user_id}/reviews"
-    all_review_urls = set()
-
-    # Setup Chrome driver with selenium-wire
-    chrome_options = Options()
-    chrome_options.add_argument("--disable-notifications")
-    driver = wire_webdriver.Chrome(options=chrome_options)
+def scroll_through_available_reviews(driver, url):
+    """Open user review and scroll until all the reviews have been loaded"""
 
     try:
         log_message(f"Navigating to user reviews: {url}", "INFO")
@@ -200,13 +234,30 @@ def intercept_review_requests(user_id):
             )
             time.sleep(1)
 
+    except Exception as e:
+        log_message(f"Error during review extraction: {str(e)}", "ERROR")
+
+
+def intercept_review_requests(user_id):
+    """Process and extract direct review report URLs for a given user ID"""
+    url = f"https://www.google.com/maps/contrib/{user_id}/reviews"
+    all_review_urls = set()
+
+    # Setup Chrome driver with selenium-wire
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-notifications")
+    driver = wire_webdriver.Chrome(options=chrome_options)
+
+    try:
+        scroll_through_available_reviews(driver, url)
+
         # Process network requests
         for request in driver.requests:
             if request.response and "/locationhistory/preview/mas" in request.url:
                 try:
                     response_data = brotli.decompress(request.response.body)
                     decoded_str = response_data.decode("utf-8")
-                    urls = extract_urls_from_response(decoded_str)
+                    urls = extract_report_urls_from_response(decoded_str)
                     all_review_urls.update(urls)
                 except Exception as e:
                     log_message(f"Error processing response: {str(e)}", "ERROR")
@@ -215,7 +266,7 @@ def intercept_review_requests(user_id):
         app_initial_state = driver.execute_script(
             "return window.APP_INITIALIZATION_STATE"
         )
-        urls = extract_urls_from_response(str(app_initial_state))
+        urls = extract_report_urls_from_response(str(app_initial_state))
         all_review_urls.update(urls)
 
         log_message(f"Found {len(all_review_urls)} unique review URLs", "INFO")
@@ -229,19 +280,93 @@ def intercept_review_requests(user_id):
         driver.quit()
 
 
+def intercept_review_short_url_requests(user_id):
+    """Process and extract short review URLs for a given user ID"""
+    url = f"https://www.google.com/maps/contrib/{user_id}/reviews"
+    short_review_urls = set()
+
+    # Setup Chrome driver with selenium-wire
+    chrome_options = Options()
+    chrome_options.add_argument("--disable-notifications")
+    driver = wire_webdriver.Chrome(options=chrome_options)
+
+    try:
+        scroll_through_available_reviews(driver, url)
+
+        # Extract available share buttons and click em
+        share_buttons_selector = "#QA0Szd > div > div > div.w6VYqd > div:nth-child(2) > div > div.e07Vkf.kA9KIf > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde > div.m6QErb.XiKgde > * > div:nth-child(2) > div > div:nth-child(4) > div.Upo0Ec > button:nth-child(2)"
+        share_buttons = driver.find_elements(By.CSS_SELECTOR, share_buttons_selector)
+
+        wait = WebDriverWait(driver, 20)
+        close_button_selector = "#modal-dialog > div > div.hoUMge > div > button"
+        copy_link_selector = "#modal-dialog > div > div.hoUMge > div > div.yFnP6d > div > div > div > div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde > div.NB4yxe > div.WVlZT > button"
+
+        for button in share_buttons:
+            try:
+                button.click()
+                time.sleep(0.1)
+
+                # Wait for the link to get generated and close the dialog
+                wait.until(
+                    EC.presence_of_element_located(
+                        (By.CSS_SELECTOR, copy_link_selector)
+                    )
+                )
+
+                driver.find_element(By.CSS_SELECTOR, close_button_selector).click()
+            except Exception as e:
+                log_message(
+                    f"Unabled to generate short link for the button id: '{button.id}', error: {str(e)}"
+                )
+
+        # Process network requests
+        for request in driver.requests:
+            if request.response and "shorturl" in request.url:
+                try:
+                    decoded_str = gzip.decompress(request.response.body).decode("utf-8")
+                    urls = extract_short_urls_from_response(decoded_str)
+                    short_review_urls.update(urls)
+                except Exception as e:
+                    log_message(f"Error processing response: {str(e)}", "ERROR")
+
+        log_message(f"Found {len(short_review_urls)} unique review URLs", "INFO")
+        return list(short_review_urls)
+
+    except Exception as e:
+        log_message(f"Error during review extraction: {str(e)}", "ERROR")
+        return []
+
+    finally:
+        driver.quit()
+
+
 def main():
     ensure_data_directory()
-    log_message("Starting review scraping process", "INFO")
+
+    action = choose_actions()
+    if not action:
+        log_message("Unrecognized action to take", "ERROR")
+        sys.exit(1)
 
     user_id = input("User ID: ")
-    review_urls = intercept_review_requests(user_id)
+    log_message("Starting review scraping process", "INFO")
+
+    if action == "Genearte Direct Report links - Dolphin":
+        file_prefix = "review_report"
+        review_urls = intercept_review_requests(user_id)
+    elif action == "Genearte Short links - Geelark":
+        file_prefix = "review_short_links"
+        review_urls = intercept_review_short_url_requests(user_id)
+    else:
+        log_message("Unrecognized action to take", "ERROR")
+        sys.exit(1)
 
     if review_urls:
-        output_file = os.path.join(DATA_DIR, f"review_report_{user_id}.json")
+        output_file = os.path.join(DATA_DIR, f"{file_prefix}_{user_id}.json")
         with open(output_file, "w") as f:
             json.dump(review_urls, f)
         log_message(
-            f"Successfully saved {len(review_urls)} review URLs to {output_file}",
+            f"Successfully saved {len(review_urls)} review URLs to {output_file}. for action: '{action}'",
             "INFO",
         )
     else:
