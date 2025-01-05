@@ -353,18 +353,23 @@ def main():
 
     if action == "Genearte Direct Report links - Dolphin":
         file_prefix = "review_report"
+        file_suffix = "json"
         review_urls = intercept_review_requests(user_id)
     elif action == "Genearte Short links - Geelark":
         file_prefix = "review_short_links"
+        file_suffix = "txt"
         review_urls = intercept_review_short_url_requests(user_id)
     else:
         log_message("Unrecognized action to take", "ERROR")
         sys.exit(1)
 
     if review_urls:
-        output_file = os.path.join(DATA_DIR, f"{file_prefix}_{user_id}.json")
+        output_file = os.path.join(DATA_DIR, f"{file_prefix}_{user_id}.{file_suffix}")
         with open(output_file, "w") as f:
-            json.dump(review_urls, f)
+            if file_suffix == "json":
+                json.dump(review_urls, f)
+            else:
+                f.write("\n".join(review_urls))
         log_message(
             f"Successfully saved {len(review_urls)} review URLs to {output_file}. for action: '{action}'",
             "INFO",
