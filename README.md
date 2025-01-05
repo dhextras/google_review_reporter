@@ -99,8 +99,8 @@ Fetch all the reports of who ever user you wanna report then report them one by 
   ```
 
 > This isn't fully finished so you have to run the RPA task manually until they finis new api for custom rpa tasks
+**Small note: If you want to see task being ran on live ( make sure to start the phone before running these)**
 
-      - **Small note: If you want to see task being ran on live ( make sure to start the phone before running these)**
       - Open Geelark Application. Go to Discover > Automation > custom tasks
       - In Google profile report click on the `>` play lie button
       - Create Common Tas > Add phone
